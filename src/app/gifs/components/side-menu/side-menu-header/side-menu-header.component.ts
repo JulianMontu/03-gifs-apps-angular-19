@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { environment } from '@environments/environment';
 
 @Component({
   selector: 'gifs-side-menu-header',
   templateUrl: './side-menu-header.component.html',
 })
-export class SideMenuHeaderComponent { }
+export class SideMenuHeaderComponent { 
+  envs = environment;
+}
