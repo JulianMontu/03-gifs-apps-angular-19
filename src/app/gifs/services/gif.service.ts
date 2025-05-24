@@ -4,7 +4,7 @@ import { environment } from '@environments/environment';
 import type { GiphyReponse } from '../interfaces/giphy.interface';
 import { Gif } from '../interfaces/gif.interface';
 import { GifMapper } from '../mapper/gif.mapper';
-import { map, Observable, tap } from 'rxjs';
+import { map, Observable, of, tap } from 'rxjs';
 const GIF_KEY = 'gifs';
 const loadFromLocalStorage = () => {
   const gifsFromLocalStorage = localStorage.getItem(GIF_KEY) ?? '{}';
@@ -17,8 +17,16 @@ const loadFromLocalStorage = () => {
 export class GifService {
 
   private http = inject(HttpClient);
+  private trendingPage = signal<number>(0);
   trendingGifs = signal<Gif[]>([]);
-  trendingGifsLoading = signal<boolean>(true);
+  trendingGifGroup = computed(() => {
+    const groups = [];
+    for (let i = 0; i < this.trendingGifs().length; i += 3) {
+      groups.push(this.trendingGifs().slice(i, i + 3));
+    }
+    return groups;
+  })
+  trendingGifsLoading = signal<boolean>(false);
   searchHistory = signal<Record<string, Gif[]>>(loadFromLocalStorage());
   searchHistoryComputed = computed(() => Object.keys(this.searchHistory()));
 
@@ -34,14 +42,20 @@ export class GifService {
   })
 
   loadTrendingGifs() {
+    if(this.trendingGifsLoading()) return;
+
+    this.trendingGifsLoading.set(true);
     this.http.get<GiphyReponse>(`${environment.giphyUlr}/gifs/trending`, {
       params: {
         api_key: environment.giphyApiKey,
         limit: 20,
+        offset: this.trendingPage() * 20 ,
       }
     }).subscribe((response) => {
-      this.trendingGifs.set(GifMapper.mapGiphyItemsToGifArray(response.data));
+      const gifs = GifMapper.mapGiphyItemsToGifArray(response.data);
+      this.trendingGifs.update(currenGifs => [...currenGifs, ...gifs]);
       this.trendingGifsLoading.set(false);
+      this.trendingPage.update((page) => page + 1);
     })
   }
 
